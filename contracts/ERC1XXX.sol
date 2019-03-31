@@ -196,8 +196,6 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 		mapping(uint256 => address[]) exitingQueue;
 		// Blacklist
 		mapping(address => bool) slashed;
-		mapping(uint256 => uint256) rewards;
-    address[] slashedValidators;
 
 		constructor(
 				string memory _name,
@@ -210,6 +208,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 				minimumStake = _minimumStake;
 				withdrawalDelay = _withdrawalDelay;
 				challengePeriod = _challengePeriod;
+        // TODO genesis checkpoint
 		}
 
 		function deposit() external payable {
@@ -289,6 +288,8 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 				// Add branch to the checkpoint tree
 				checkpointTree[newChildHash] = _parent;
 				checkpoints[newChildHash] = _checkpoint;
+
+        // TODO mint token
 		}
 
     function vote(
@@ -480,6 +481,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         // Record reward
         uint256 reward = getReward(_target.parent, _target.proposer);
         _validator.reward += reward;
+        // TODO mint token
 
         // Emit vote event
         emit Vote(_vote.signer, _vote.target, _vote.targetEpoch, _vote.sourceEpoch);
