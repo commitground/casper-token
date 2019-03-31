@@ -1,26 +1,29 @@
 const chai = require('chai')
 const BigNumber = web3.BigNumber
 chai.use(require('chai-bignumber')(BigNumber)).should()
-const CasperToken = artifacts.require('ERC1XXX')
-const OverflowPriorityGenerator = artifacts.require('OverflowPriorityGenerator')
+const ERC1XXX = artifacts.require('ERC1XXX')
+const Casper = artifacts.require('Casper')
 
-contract('CasperToken', ([deployer, ...members]) => {
+contract('ERC1XXX', ([deployer, ...members]) => {
   let casperToken
   before('Deploy library', async () => {
-    let priorityLib = await OverflowPriorityGenerator.new()
-    await CasperToken.link(OverflowPriorityGenerator, priorityLib.address)
+    let casper = await Casper.new()
+    await ERC1XXX.link(Casper, casper.address)
   })
   context('Test', async () => {
     beforeEach('Deploy new contract', async () => {
-      casperToken = await CasperToken.new('CasperToken', 'CTK', 18, web3.utils.toWei('10'))
+      casperToken = await ERC1XXX.new(
+        'CasperToken',
+        'CPT',
+        18,
+        web3.utils.toWei('10'),
+        10368000,
+        540
+      )
     })
-  })
-  context('priority should be random as possible', async () => {
-    before('Deploy new contract', async () => {
-      casperToken = await CasperToken.new('CasperToken', 'CTK', 18, web3.utils.toWei('10'))
-      for (let member of members) {
-        await casperToken.participate({ from: member, value: web3.utils.toWei('10') })
-      }
+    it('should follow ERC20 standard', async () => {
+      let currentBalance = await casperToken.balanceOf(members[0])
+      currentBalance.isZero().should.equal(true)
     })
   })
 })
