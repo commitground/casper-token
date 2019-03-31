@@ -26,11 +26,13 @@
     "standard": "^12.0.1",
     "truffle": "^5.0.3",
     "truffle-plugin-modularizer": "^1.2.3",
-    "typedarray-to-buffer": "^3.1.5"
+    "typedarray-to-buffer": "^3.1.5",
+    "yaeti": "^1.0.2"
   },
   "dependencies": {
     "javascript-stringify": "^1.6.0",
     "openzeppelin-solidity": "^2.1.3",
+    "solidity-bloom-filter": "^1.0.0",
     "truffle-contract": "^4.0.4"
   },
   "standard": {

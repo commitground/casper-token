@@ -19,7 +19,7 @@ module.exports = {
       output: 'src/index.js',
       target: 'build/contracts',
       includeOnly: [
-        'CasperToken'
+        'ERC1XXX'
       ], // if you don\'t configure includeOnly property, it will save all contracts
       networks: [
         1,
