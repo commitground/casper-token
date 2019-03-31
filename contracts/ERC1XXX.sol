@@ -3,34 +3,35 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
 
 library Casper {
-		struct Checkpoint {
-				address proposer;
-				bytes32 parent;
-				bytes32 state;
-				uint256 epochNum;
-				uint256 nonce;
-				uint256 timestamp;
-				bytes32 randomness;
-				bool justified;
-				bool finalized;
-				bool accused;
-				bool slashed;
-				uint256 votes;
-		}
+    struct Checkpoint {
+        address proposer;
+        bytes32 parent;
+        bytes32 state;
+        uint256 epochNum;
+        uint256 nonce;
+        uint256 timestamp;
+        bytes32 randomness;
+        bool justified;
+        bool finalized;
+        bool accused;
+        bool slashed;
+        uint256 votes;
+    }
 
-		function hash(Checkpoint memory obj) internal pure returns (bytes32) {
-				return keccak256(abi.encodePacked(
-						obj.proposer,
-						obj.parent, 
-						obj.state, 
-						obj.epochNum,
-						obj.nonce
-				));
-		}
+    function hash(Checkpoint memory obj) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                obj.proposer,
+                obj.parent, 
+                obj.state, 
+                obj.epochNum,
+                obj.nonce)
+        );
+    }
 
-		function getStartingPoint(Checkpoint memory obj, uint8 len) internal pure returns (uint8) {
-				return uint8(uint256(keccak256(abi.encodePacked(hash(obj),obj.randomness))) % len);
-		}
+    function getStartingPoint(Checkpoint memory obj, uint8 len) internal pure returns (uint8) {
+        return uint8(uint256(keccak256(abi.encodePacked(hash(obj),obj.randomness))) % len);
+    }
 
     function has(uint256 bitFilter, uint8 id) public pure returns (bool) {
         return (bitFilter & (uint256(1) << id)) != 0;
@@ -42,47 +43,47 @@ library Casper {
         return bitFilter | position;
     }
 
-		struct Validator {
+    struct Validator {
         address addr;
-				uint8 id; // It can be changed dynamically
-				uint256 stake; // wei
-				uint256 startDynasty; // The dynasty number to start validation
-				uint256 endDynasty; // The dynasty number to end validation
-				uint256 withdrawable; // Restricted to participate in until this timestamp value
-				uint256 reward; // Reward
+        uint8 id; // It can be changed dynamically
+        uint256 stake; // wei
+        uint256 startDynasty; // The dynasty number to start validation
+        uint256 endDynasty; // The dynasty number to end validation
+        uint256 withdrawable; // Restricted to participate in until this timestamp value
+        uint256 reward; // Reward
         bool slashed;
-		}
+    }
 
-		function isInitialized(Validator memory obj) internal pure returns(bool) {
-				return obj.addr != address(0);
-		} 
+    function isInitialized(Validator memory obj) internal pure returns(bool) {
+        return obj.addr != address(0);
+    } 
 
-		struct VoteMsg {
-				bytes32 source;
-				bytes32 target;
-				uint256 sourceEpoch;
-				uint256 targetEpoch;
-				address signer;
-		}
+    struct VoteMsg {
+        bytes32 source;
+        bytes32 target;
+        uint256 sourceEpoch;
+        uint256 targetEpoch;
+        address signer;
+    }
 
-		function toVote(bytes memory voteMsg) internal pure returns(VoteMsg memory) {
-				(
-						bytes32 source, 
-						bytes32 target,
-						uint256 sourceEpoch,
-						uint256 targetEpoch, 
-						bytes32 r,
-						bytes32 s,
-						uint8 v
-				) = abi.decode(voteMsg,(bytes32, bytes32, uint256, uint256, bytes32, bytes32, uint8));
+    function toVote(bytes memory voteMsg) internal pure returns(VoteMsg memory) {
+        (
+            bytes32 source, 
+            bytes32 target,
+            uint256 sourceEpoch,
+            uint256 targetEpoch, 
+            bytes32 r,
+            bytes32 s,
+            uint8 v
+        ) = abi.decode(voteMsg,(bytes32, bytes32, uint256, uint256, bytes32, bytes32, uint8));
 
-				bytes32 voteHash = keccak256(abi.encodePacked(source, target, sourceEpoch, targetEpoch));
-				bytes32 ethMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", voteHash));
-				require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "Malleable signature");
-				require(v == 27 || v == 28, "Malleable signature");
-				address signer = ecrecover(ethMessage, v, r, s);
-				return VoteMsg(source, target, sourceEpoch, targetEpoch, signer);
-		}
+        bytes32 voteHash = keccak256(abi.encodePacked(source, target, sourceEpoch, targetEpoch));
+        bytes32 ethMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", voteHash));
+        require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "Malleable signature");
+        require(v == 27 || v == 28, "Malleable signature");
+        address signer = ecrecover(ethMessage, v, r, s);
+        return VoteMsg(source, target, sourceEpoch, targetEpoch, signer);
+    }
 
     function toBatchVotes(bytes memory batchVotes) internal pure returns(VoteMsg[] memory) {
         require(batchVotes.length % 193 == 0);
@@ -90,13 +91,13 @@ library Casper {
         bytes32 source;
         bytes32 target;
         uint256 sourceEpoch;
-		    uint256 targetEpoch; 
-		    bytes32 r;
-		    bytes32 s;
-		    uint8 v;
-		    bytes32 voteHash;
-		    bytes32 ethMessage;
-		    address signer;
+        uint256 targetEpoch; 
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        bytes32 voteHash;
+        bytes32 ethMessage;
+        address signer;
         for(uint i = 0; i < batchVotes.length / 193; i++) {
             assembly {
                 source := mload(add(batchVotes, add(mul(i, 0xc1), 0x20)))
@@ -118,179 +119,176 @@ library Casper {
 }
 
 contract ERC1XXX is ERC20, ERC20Detailed {
-		using Casper for Casper.Checkpoint;
-		using Casper for Casper.Validator;
-		using Casper for Casper.VoteMsg;
-		using Casper for bytes;
-		using Casper for uint256;
+    using Casper for Casper.Checkpoint;
+    using Casper for Casper.Validator;
+    using Casper for Casper.VoteMsg;
+    using Casper for bytes;
+    using Casper for uint256;
 
-		event Deposit(
-				address indexed _from,
-				uint256 indexed _validatorIndex,
-				address _validatorAddress,
-				address _start_dyn,
-				uint256 _amount
-		); // amount: wei
+    event Deposit(
+        address indexed _from,
+        uint256 _startDynasty,
+        uint256 _amount
+    ); // amount: wei
 
-		event Vote(
-				address indexed _from,
-				bytes32 indexed _targetHash,
-				uint256 _targetEpoch,
-				uint256 _sourceEpoch
-		);
+    event Vote(
+        address indexed _from,
+        bytes32 indexed _targetHash,
+        uint256 _targetEpoch,
+        uint256 _sourceEpoch
+    );
 
-		event Logout(
-				address indexed _from,
-				uint256 indexed _validatorIndex,
-				uint256 _endDynasty
-		);
+    event Logout(
+        address indexed _from,
+        uint256 _endDynasty
+    );
 
-		event Withdraw(
-				address indexed _to,
-				uint256 indexed _validatorIndex,
-				uint256 _amount
-		); // amount: wei
+    event Withdraw(
+        address indexed _to,
+        uint256 _amount
+    ); // amount: wei
 
-		event Slash(
-				address indexed _from,
-				address indexed _offender,
-				uint256 indexed _offenderIndex,
-				uint256 _bounty
-		); // bounty: wei 
+    event Slash(
+        address indexed _from,
+        address indexed _offender,
+        uint256 indexed _offenderIndex,
+        uint256 _bounty
+    ); // bounty: wei 
 
-		event Epoch(
-				uint256 indexed _number,
-				bytes32 indexed _checkpointHash,
-				bool _isJustified,
-				bool _isChallenged,
-				bool _isFinalized
-		);
+    event Epoch(
+        uint256 indexed _number,
+        bytes32 indexed _checkpointHash,
+        bool _isJustified,
+        bool _isChallenged,
+        bool _isFinalized
+    );
 
     uint256 public constant MAXIMUM_REWARD = 1 ether;
 
-		mapping(uint256 => uint256) votes;
+    mapping(uint256 => uint256) votes;
 
-		// Meta data
-		uint256 public withdrawalDelay = 10368000; // 4months (4 * 30 * 24 * 60 * 60)
-		uint256 public minimumStake = 32 ether;
-		uint256 public challengePeriod = 540; // (15 sec * 12 confirmation * 3)
+    // Meta data
+    uint256 public withdrawalDelay = 10368000; // 4months (4 * 30 * 24 * 60 * 60)
+    uint256 public minimumStake = 32 ether;
+    uint256 public challengePeriod = 540; // (15 sec * 12 confirmation * 3)
     uint256 public minimumBond = 32 ether;
 
-		// Checkpoints
-		mapping(bytes32 => bytes32) checkpointTree; // child => parent
-		mapping(bytes32 => Casper.Checkpoint) checkpoints; // detail for the checkpoint
+    // Checkpoints
+    mapping(bytes32 => bytes32) checkpointTree; // child => parent
+    mapping(bytes32 => Casper.Checkpoint) checkpoints; // detail for the checkpoint
     bytes32 finalizedCheckpoint;
 
-		// Dynasty
-		uint256 dynastyNum;
+    // Dynasty
+    uint256 dynastyNum;
     uint256 totalStake;
     uint256 slashedIds;
 
-		// Validator
-		address[] validatorList;
-		mapping(address => Casper.Validator) validators;
+    // Validator
+    address[] validatorList;
+    mapping(address => Casper.Validator) validators;
 
-		// dynastyNum => new validator set
-		mapping(uint256 => address[]) validatorQueue;
-		// dynastyNum => validator set to remove
-		mapping(uint256 => address[]) exitingQueue;
-		// Blacklist
-		mapping(address => bool) slashed;
+    // dynastyNum => new validator set
+    mapping(uint256 => address[]) validatorQueue;
+    // dynastyNum => validator set to remove
+    mapping(uint256 => address[]) exitingQueue;
+    // Blacklist
+    mapping(address => bool) slashed;
 
-		constructor(
-				string memory _name,
-				string memory _symbol,
-				uint8 _decimals,
-				uint256 _minimumStake,
-				uint256 _withdrawalDelay,
-				uint256 _challengePeriod
-		) public ERC20Detailed(_name, _symbol, _decimals) {
-				minimumStake = _minimumStake;
-				withdrawalDelay = _withdrawalDelay;
-				challengePeriod = _challengePeriod;
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals,
+        uint256 _minimumStake,
+        uint256 _withdrawalDelay,
+        uint256 _challengePeriod
+    ) public ERC20Detailed(_name, _symbol, _decimals) {
+        minimumStake = _minimumStake;
+        withdrawalDelay = _withdrawalDelay;
+        challengePeriod = _challengePeriod;
         // TODO genesis checkpoint
-		}
+    }
 
-		function deposit() external payable {
-				// Should send exact amount of stake
-				require(msg.value >= minimumStake, "Send the exact amount of stake");
+    function deposit() external payable {
+        // Should send exact amount of stake
+        require(msg.value >= minimumStake, "Send the exact amount of stake");
 
-				Casper.Validator storage _newbie = validators[msg.sender];
-				// Assure the validator has valid state to participate in
-				require(_newbie.isInitialized(), "Should be initialized with zero");
-				// Check the address was slashed before
-				require(!slashed[msg.sender], "Should never been slashed before");
+        Casper.Validator storage _newbie = validators[msg.sender];
+        // Assure the validator has valid state to participate in
+        require(!_newbie.isInitialized(), "Should not be initialized");
+        // Check the address was slashed before
+        require(!slashed[msg.sender], "Should never been slashed before");
 
-				// Set the stake amount
-				validators[msg.sender].stake = msg.value;
+        // Set the stake amount
+        validators[msg.sender].stake = msg.value;
 
-				if(dynastyNum == 0) {
-						// Before it is launched, put the message sender into the validator set immediately
-						_newbie.startDynasty = dynastyNum;
-						_activateValidator(msg.sender);
-				} else {
-						// Set start dynasty
-						_newbie.startDynasty = dynastyNum + 2;
-						// After the launching, add to the validator queue and update later
-						validatorQueue[dynastyNum + 2].push(msg.sender);
-				}
+        if(dynastyNum == 0) {
+            // Before it is launched, put the message sender into the validator set immediately
+            _newbie.startDynasty = dynastyNum;
+            _activateValidator(msg.sender);
+        } else {
+            // Set start dynasty
+            _newbie.startDynasty = dynastyNum + 2;
+            // After the launching, add to the validator queue and update later
+            validatorQueue[dynastyNum + 2].push(msg.sender);
+        }
         _newbie.endDynasty = uint256(0) - 1;
-		}
+        emit Deposit(msg.sender, _newbie.startDynasty, _newbie.stake);
+    }
 
-		function requestWithdraw() external {
-				// Should be a validator
-				require(isValidator(msg.sender) && !slashed[msg.sender]);
-				// Set end dynasty for the validator
-				validators[msg.sender].endDynasty = dynastyNum + 2;
+    function requestWithdraw() external {
+        // Should be a validator
+        require(isValidator(msg.sender) && !slashed[msg.sender]);
+        // Set end dynasty for the validator
+        validators[msg.sender].endDynasty = dynastyNum + 2;
         exitingQueue[dynastyNum + 2].push(msg.sender);
-		}
+    }
 
-		function withdraw() external {
-				// Should be withdrawable
-				require(isWithdrawable(msg.sender));
+    function withdraw() external {
+        // Should be withdrawable
+        require(isWithdrawable(msg.sender));
 
-				Casper.Validator storage _withdrawer = validators[msg.sender];
-				// Transfer Ether to the message sender;
-				msg.sender.transfer(_withdrawer.stake);
-				// Delete _withdrawer information
-				delete validators[msg.sender];
-		}
+        Casper.Validator storage _withdrawer = validators[msg.sender];
+        // Transfer Ether to the message sender;
+        msg.sender.transfer(_withdrawer.stake);
+        // Delete _withdrawer information
+        delete validators[msg.sender];
+    }
 
-		function propose(bytes32 _parent, bytes32 _state, uint256 _epochNum, uint256 _nonce) external {
-				// Should have permission to propose
-				require(isValidator(msg.sender)); 
+    function propose(bytes32 _parent, bytes32 _state, uint256 _epochNum, uint256 _nonce) external {
+        // Should have permission to propose
+        require(isValidator(msg.sender)); 
 
-				// Get parent & check epoch num
-				require(checkpoints[_parent].epochNum + 1 == _epochNum, "Should be a direct child");
+        // Get parent & check epoch num
+        require(checkpoints[_parent].epochNum + 1 == _epochNum, "Should be a direct child");
 
-				// Init checkpoint
-				Casper.Checkpoint memory _checkpoint = Casper.Checkpoint(
-						msg.sender,
-						_parent, 
-						_state, 
-						_epochNum, 
-						_nonce, 
-						now,
+        // Init checkpoint
+        Casper.Checkpoint memory _checkpoint = Casper.Checkpoint(
+            msg.sender,
+            _parent, 
+            _state, 
+            _epochNum, 
+            _nonce, 
+            now,
             _newRandomness(),
-						false,
-						false,
-						false,
-						false,
-						0
-				);
+            false,
+            false,
+            false,
+            false,
+            0
+        );
 
-				// Get hash of the checkpoint
-				bytes32 newChildHash = _checkpoint.hash();
+        // Get hash of the checkpoint
+        bytes32 newChildHash = _checkpoint.hash();
 
-				// Should submit PoW nonce
-				require(proofOfWork(msg.sender, _parent, _state, _epochNum, _nonce));
+        // Should submit PoW nonce
+        require(proofOfWork(msg.sender, _parent, _state, _epochNum, _nonce));
 
-				// Add branch to the checkpoint tree
-				checkpointTree[newChildHash] = _parent;
-				checkpoints[newChildHash] = _checkpoint;
+        // Add branch to the checkpoint tree
+        checkpointTree[newChildHash] = _parent;
+        checkpoints[newChildHash] = _checkpoint;
 
         // TODO mint token
-		}
+    }
 
     function vote(
         bytes32 _source, 
@@ -308,21 +306,21 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         _applyVote(_voteMsg);
     }
 
-		function pushVoteMsg(bytes calldata _msg) external {
+    function pushVoteMsg(bytes calldata _msg) external {
         Casper.VoteMsg memory _voteMsg = _msg.toVote();
         _applyVote(_voteMsg);
-		}
+    }
 
     function batchVote(bytes calldata _msgArr) external {
         Casper.VoteMsg[]  memory _voteMessages = _msgArr.toBatchVotes();
         for(uint i = 0; i < _voteMessages.length; i ++) {
             _applyVote(_voteMessages[i]);
         }
-		}
+    }
 
     function challenge(bytes32 _checkpointHash) external payable {
-				// Should send exact amount of stake for the challenge
-				require(msg.value >= minimumBond, "Send the exact amount of stake");
+        // Should send exact amount of stake for the challenge
+        require(msg.value >= minimumBond, "Send the exact amount of stake");
         Casper.Checkpoint storage _checkpointToAccuse = checkpoints[_checkpointHash];
         Casper.Checkpoint memory _finalizedCheckpoint = checkpoints[finalizedCheckpoint];
         require(_finalizedCheckpoint.epochNum < _checkpointToAccuse.epochNum, "Can not be challenged");
@@ -335,16 +333,16 @@ contract ERC1XXX is ERC20, ERC20Detailed {
             _checkpointToAccuse.accused, 
             _checkpointToAccuse.finalized 
         );
-		}
+    }
 
-		function justify(bytes32 _checkpointHash) public {
-				Casper.Checkpoint storage _checkpoint = checkpoints[_checkpointHash];
+    function justify(bytes32 _checkpointHash) public {
+        Casper.Checkpoint storage _checkpoint = checkpoints[_checkpointHash];
         if(_checkpoint.justified) return;
 
         // Checkpoint should be out of disputing period
-				require(_checkpoint.timestamp + challengePeriod < now, "Still in dispute period");
+        require(_checkpoint.timestamp + challengePeriod < now, "Still in dispute period");
 
-				// apply stitching mechanism
+        // apply stitching mechanism
         uint256 _foreStake;
         uint256 _rearStake;
         Casper.Validator memory _validator;
@@ -362,17 +360,17 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         }
         require(_foreStake >= (totalStake / 3) * 2, "Fore-validation failed");
         require(_rearStake >= (totalStake / 3) * 2, "Rear-validation failed");
-       
+
         // Change the current checkpoint as justified
         _checkpoint.justified = true;
         emit Epoch(_checkpoint.epochNum, _checkpointHash, _checkpoint.justified, _checkpoint.accused, _checkpoint.finalized);
 
         // Try to finalize the parent checkpoint if the direct parent is also justified
-				Casper.Checkpoint storage _parent = checkpoints[_checkpoint.parent];  
+        Casper.Checkpoint storage _parent = checkpoints[_checkpoint.parent];  
         if(_parent.justified) {
             _finalize(_parent);
         }
-		}
+    }
 
     function slash(bytes memory _vote1, bytes memory _vote2) public {
         Casper.VoteMsg memory _voteMsg1 = _vote1.toVote();
@@ -395,23 +393,23 @@ contract ERC1XXX is ERC20, ERC20Detailed {
             _slashValidator(_voteMsg1.signer);
         }
     }
-    
-		function isValidator(address _validatorAddress) public view returns (bool) {
-				Casper.Validator storage _validator = validators[_validatorAddress];
+
+    function isValidator(address _validatorAddress) public view returns (bool) {
+        Casper.Validator storage _validator = validators[_validatorAddress];
         if(_validator.addr == address(0)) return false;
-				return _isForeValidator(_validator) || _isRearValidator(_validator);
-		}
+        return _isForeValidator(_validator) || _isRearValidator(_validator);
+    }
 
 
-		function isWithdrawable(address _validatorAddress) public view returns (bool) {
-				Casper.Validator storage validator = validators[_validatorAddress];
-				return validator.endDynasty <= dynastyNum && validator.withdrawable != 0 && validator.withdrawable < now && !slashed[_validatorAddress];
-		}
+    function isWithdrawable(address _validatorAddress) public view returns (bool) {
+        Casper.Validator storage validator = validators[_validatorAddress];
+        return validator.endDynasty <= dynastyNum && validator.withdrawable != 0 && validator.withdrawable < now && !slashed[_validatorAddress];
+    }
 
-		function getDifficulty(bytes32 _parent, address _proposer) public view returns (uint256) {
-				uint8 _priority = getPriority(_parent, _proposer);
-				return uint256(bytes32(uint256(0) - 1) >> 4 * _priority);
-		}
+    function getDifficulty(bytes32 _parent, address _proposer) public view returns (uint256) {
+        uint8 _priority = getPriority(_parent, _proposer);
+        return uint256(bytes32(uint256(0) - 1) >> 4 * _priority);
+    }
 
 
     function getReward(bytes32 _parent, address _proposer) public view returns (uint256){
@@ -419,45 +417,46 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         return reward;
     }
 
-		function getPriority(bytes32 _parent, address _proposer) public view returns (uint8) {
-				Casper.Checkpoint memory parentCheckpoint = checkpoints[_parent];
-				// It should have own randomness value
-				require(parentCheckpoint.randomness != bytes32(0));
+    function getPriority(bytes32 _parent, address _proposer) public view returns (uint8) {
+        Casper.Checkpoint memory parentCheckpoint = checkpoints[_parent];
+        // It should have own randomness value
+        require(parentCheckpoint.randomness != bytes32(0));
 
-				// Get the starting point
-				uint8 _startingPoint = parentCheckpoint.getStartingPoint(uint8(validatorList.length));
+        // Get the starting point
+        uint8 _startingPoint = parentCheckpoint.getStartingPoint(uint8(validatorList.length));
 
-				// Get the order of the proposer
-				Casper.Validator memory _validator = validators[_proposer];
-				require(_validator.isInitialized());
+        // Get the order of the proposer
+        Casper.Validator memory _validator = validators[_proposer];
+        require(_validator.isInitialized());
 
-				// Use underflow & overflow
+        // Use underflow & overflow
         uint8 _priority;
         if(_validator.id >= _startingPoint) {
             _priority = _validator.id - _startingPoint;
         } else {
             _priority = uint8(validatorList.length) + _validator.id - _startingPoint;
         }
-				return _priority;
-		}
+        return _priority;
+    }
 
-		function proofOfWork(
-				address _proposer,
-				bytes32 _parent,
-				bytes32 _state,
-				uint256 _epochNum,
-				uint256 _nonce
-		) public view returns (bool) {
-				bytes32 _root = keccak256(abi.encodePacked(
-						_proposer,
-						_parent,
-						_state,
-						_epochNum,
-						_nonce
-				));
-				bytes32 _randomness = checkpoints[_parent].randomness;
-				return uint256(keccak256(abi.encodePacked(_root, _randomness))) < getDifficulty(_parent, _proposer);
-		}
+    function proofOfWork(
+        address _proposer,
+        bytes32 _parent,
+        bytes32 _state,
+        uint256 _epochNum,
+        uint256 _nonce
+    ) public view returns (bool) {
+        bytes32 _root = keccak256(
+            abi.encodePacked(
+            _proposer,
+            _parent,
+            _state,
+            _epochNum,
+            _nonce)
+        );
+        bytes32 _randomness = checkpoints[_parent].randomness;
+        return uint256(keccak256(abi.encodePacked(_root, _randomness))) < getDifficulty(_parent, _proposer);
+    }
 
     function _applyVote(Casper.VoteMsg memory _vote) internal {
         // Check the input param validity
@@ -471,11 +470,11 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         // The signer should be a validator
         require(isValidator(_validator.addr));
 
-				// Not able to vote for same height checkpoint
+        // Not able to vote for same height checkpoint
         require(!votes[_vote.targetEpoch].has(_validator.id), "Already voted");
-        
-				// Record the vote
-				votes[_vote.targetEpoch] = votes[_vote.targetEpoch].append(_validator.id);
+
+        // Record the vote
+        votes[_vote.targetEpoch] = votes[_vote.targetEpoch].append(_validator.id);
         _target.votes = _target.votes.append(_validator.id);
 
         // Record reward
@@ -506,7 +505,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 
         Casper.Validator storage _validator = validators[_addr];
         // Give all stake to the slasher
-				msg.sender.transfer(_validator.stake);
+        msg.sender.transfer(_validator.stake);
         // Add to the blacklist
         slashed[_addr] = true;
         // Remove the information
@@ -515,14 +514,14 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         _validator.slashed = true;
     }
 
-		function _finalize(Casper.Checkpoint memory _checkpoint) internal {
-				// Give rewards 
-				// 1. using bloom filter => if exist give reward (lucky drop may exist)
-				// 2. do while it discover the former finalized block
-				// Conditions 1. There should be no checkpoint in dispute among its ancestors
-				// 2. It should be justified
-				// 3. Its direct parent also should be justified
-       
+    function _finalize(Casper.Checkpoint memory _checkpoint) internal {
+        // Give rewards 
+        // 1. using bloom filter => if exist give reward (lucky drop may exist)
+        // 2. do while it discover the former finalized block
+        // Conditions 1. There should be no checkpoint in dispute among its ancestors
+        // 2. It should be justified
+        // 3. Its direct parent also should be justified
+
         require(_checkpoint.justified);
         // Assure that there's no ancestor block in dispute
         bool disputingBranch = false;
@@ -546,30 +545,31 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 
         // increase dynasty
         _increaseDynasty();
-		}
+    }
 
-		function _isForeValidator(Casper.Validator memory _validator) internal view returns (bool) {
+    function _isForeValidator(Casper.Validator memory _validator) internal view returns (bool) {
         if(_validator.addr == address(0)) return false;
-				return _validator.startDynasty <= dynastyNum && dynastyNum < _validator.endDynasty && !slashed[_validator.addr];
-		}
+        return _validator.startDynasty <= dynastyNum && dynastyNum < _validator.endDynasty && !slashed[_validator.addr];
+    }
 
-		function _isRearValidator(Casper.Validator memory _validator) internal view returns (bool) {
+    function _isRearValidator(Casper.Validator memory _validator) internal view returns (bool) {
         if(_validator.addr == address(0)) return false;
-				return _validator.startDynasty < dynastyNum && dynastyNum <= _validator.endDynasty && !slashed[_validator.addr];
-		}
+        return _validator.startDynasty < dynastyNum && dynastyNum <= _validator.endDynasty && !slashed[_validator.addr];
+    }
 
-		function _newRandomness() internal view returns(bytes32) {
-				return keccak256(abi.encodePacked(
-						block.timestamp, 
-						block.coinbase, 
-						blockhash(block.number -1)
-				));
-		}
-	
-		/**
-		 * @dev This increases dynasty and update validator list
-		 */
-		function _increaseDynasty() internal {
+    function _newRandomness() internal view returns(bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                block.timestamp, 
+                block.coinbase, 
+                blockhash(block.number -1))
+        );
+    }
+
+    /**
+     * @dev This increases dynasty and update validator list
+     */
+    function _increaseDynasty() internal {
         // If any checkpoint has been slashed during current dynasty
         if(slashedIds != 0) {
             // Gather the slashed addresses
@@ -594,49 +594,49 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 
 
         // Increase dynasty
-				dynastyNum++;
-                
-				// Deactivate validators
-				address[] storage _exiters = exitingQueue[dynastyNum];
-				for(uint i = 0; i < _exiters.length; i++) {
-						_deactivateValidator(_exiters[i]);
-				}
-				delete exitingQueue[dynastyNum];
+        dynastyNum++;
 
-				// Activate validators
-				address[] storage _newValidators = validatorQueue[dynastyNum];
-				for(uint j = 0; j < _newValidators.length; j++) {
-						_activateValidator(_newValidators[j]);
-				}
-				delete validatorQueue[dynastyNum];
-		}
+        // Deactivate validators
+        address[] storage _exiters = exitingQueue[dynastyNum];
+        for(uint i = 0; i < _exiters.length; i++) {
+            _deactivateValidator(_exiters[i]);
+        }
+        delete exitingQueue[dynastyNum];
 
-		/**
-		 * @dev This function pushes the address into the current vaildator list
-		 */
-		function _activateValidator(address _validator) internal {
-				require(validatorList.length < 256); // uint8
-				Casper.Validator storage _validatorToAdd = validators[_validator];
-				// Add to the validator list
-				validatorList.push(_validator);
-				// Set id as the index in the list
-				_validatorToAdd.id = uint8(validatorList.length - 1);
+        // Activate validators
+        address[] storage _newValidators = validatorQueue[dynastyNum];
+        for(uint j = 0; j < _newValidators.length; j++) {
+            _activateValidator(_newValidators[j]);
+        }
+        delete validatorQueue[dynastyNum];
+    }
+
+    /**
+     * @dev This function pushes the address into the current vaildator list
+     */
+    function _activateValidator(address _validator) internal {
+        require(validatorList.length < 256); // uint8
+        Casper.Validator storage _validatorToAdd = validators[_validator];
+        // Add to the validator list
+        validatorList.push(_validator);
+        // Set id as the index in the list
+        _validatorToAdd.id = uint8(validatorList.length - 1);
         // Increase the total stake
         totalStake += _validatorToAdd.stake;
-		}
+    }
 
-		/**
-		 * @dev This function removes the address from the current vaildator list
-		 */
-		function _deactivateValidator(address _validator) internal {
+    /**
+     * @dev This function removes the address from the current vaildator list
+     */
+    function _deactivateValidator(address _validator) internal {
         Casper.Validator storage _validatorToPop = validators[_validator];
-				// It should be able to be removed from the validator after the end dynasty
-				require(_validatorToPop.endDynasty <= dynastyNum);
-				// Set withdrawable time
-				_validatorToPop.withdrawable = now + withdrawalDelay;
+        // It should be able to be removed from the validator after the end dynasty
+        require(_validatorToPop.endDynasty <= dynastyNum);
+        // Set withdrawable time
+        _validatorToPop.withdrawable = now + withdrawalDelay;
         // Remove from the validator set
         _removeFromValidatorSet(_validatorToPop);
-		}
+    }
 
     function _removeFromValidatorSet(Casper.Validator memory _validator) internal {
         // Decrease the total stake
@@ -647,16 +647,16 @@ contract ERC1XXX is ERC20, ERC20Detailed {
             // When the item to remove is the last item
             delete validatorList[_validator.id];
         } else {
-						// Replace the item to remove with the last item
+            // Replace the item to remove with the last item
             address _lastValidator = validatorList[validatorList.length - 1];
             validatorList[_validator.id] = _lastValidator;
             validators[_lastValidator].id = _validator.id;
-						// Delete the last item
+            // Delete the last item
             delete validatorList[validatorList.length - 1];
         }
         validatorList.length --;
 
-				// Delete the details of the validator
-				delete validators[_validator.addr];
+        // Delete the details of the validator
+        delete validators[_validator.addr];
     }
 }
