@@ -1,4 +1,5 @@
 pragma solidity >=0.4.21 < 0.6.0;
+import "./IERC1XXX.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
 
@@ -118,50 +119,12 @@ library Casper {
     }
 }
 
-contract ERC1XXX is ERC20, ERC20Detailed {
+contract ERC1XXX is IERC1XXX, ERC20, ERC20Detailed {
     using Casper for Casper.Checkpoint;
     using Casper for Casper.Validator;
     using Casper for Casper.VoteMsg;
     using Casper for bytes;
-    using Casper for uint256;
-
-    event Deposit(
-        address indexed _from,
-        uint256 _startDynasty,
-        uint256 _amount
-    ); // amount: wei
-
-    event Vote(
-        address indexed _from,
-        bytes32 indexed _targetHash,
-        uint256 _targetEpoch,
-        uint256 _sourceEpoch
-    );
-
-    event Logout(
-        address indexed _from,
-        uint256 _endDynasty
-    );
-
-    event Withdraw(
-        address indexed _to,
-        uint256 _amount
-    ); // amount: wei
-
-    event Slash(
-        address indexed _from,
-        address indexed _offender,
-        uint256 indexed _offenderIndex,
-        uint256 _bounty
-    ); // bounty: wei 
-
-    event Epoch(
-        uint256 indexed _number,
-        bytes32 indexed _checkpointHash,
-        bool _isJustified,
-        bool _isChallenged,
-        bool _isFinalized
-    );
+    using Casper for uint256; 
 
     uint256 public constant MAXIMUM_REWARD = 1 ether;
 
@@ -237,7 +200,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 
     function requestWithdraw() external {
         // Should be a validator
-        require(isValidator(msg.sender) && !slashed[msg.sender]);
+        require(_isValidator(msg.sender) && !slashed[msg.sender]);
         // Set end dynasty for the validator
         validators[msg.sender].endDynasty = dynastyNum + 2;
         exitingQueue[dynastyNum + 2].push(msg.sender);
@@ -245,7 +208,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 
     function withdraw() external {
         // Should be withdrawable
-        require(isWithdrawable(msg.sender));
+        require(_isWithdrawable(msg.sender));
 
         Casper.Validator storage _withdrawer = validators[msg.sender];
         // Transfer Ether to the message sender;
@@ -256,7 +219,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 
     function propose(bytes32 _parent, bytes32 _state, uint256 _epochNum, uint256 _nonce) external {
         // Should have permission to propose
-        require(isValidator(msg.sender)); 
+        require(_isValidator(msg.sender)); 
 
         // Get parent & check epoch num
         require(checkpoints[_parent].epochNum + 1 == _epochNum, "Should be a direct child");
@@ -281,7 +244,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         bytes32 newChildHash = _checkpoint.hash();
 
         // Should submit PoW nonce
-        require(proofOfWork(msg.sender, _parent, _state, _epochNum, _nonce));
+        require(_proofOfWork(msg.sender, _parent, _state, _epochNum, _nonce));
 
         // Add branch to the checkpoint tree
         checkpointTree[newChildHash] = _parent;
@@ -290,12 +253,12 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         // TODO mint token
     }
 
-    function vote(
-        bytes32 _source, 
-        bytes32 _target, 
-        uint256 _sourceEpoch, 
-        uint256 _targetEpoch
-    ) external {
+    function vote(bytes calldata _msg) external {
+        Casper.VoteMsg memory _voteMsg = _msg.toVote();
+        _applyVote(_voteMsg);
+    }
+
+    function directVote(bytes32 _source, bytes32 _target, uint256 _sourceEpoch, uint256 _targetEpoch) external {
         Casper.VoteMsg memory _voteMsg = Casper.VoteMsg(
             _source, 
             _target, 
@@ -303,11 +266,6 @@ contract ERC1XXX is ERC20, ERC20Detailed {
             _targetEpoch, 
             msg.sender
         );
-        _applyVote(_voteMsg);
-    }
-
-    function pushVoteMsg(bytes calldata _msg) external {
-        Casper.VoteMsg memory _voteMsg = _msg.toVote();
         _applyVote(_voteMsg);
     }
 
@@ -335,7 +293,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         );
     }
 
-    function justify(bytes32 _checkpointHash) public {
+    function justify(bytes32 _checkpointHash) external {
         Casper.Checkpoint storage _checkpoint = checkpoints[_checkpointHash];
         if(_checkpoint.justified) return;
 
@@ -372,7 +330,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         }
     }
 
-    function slash(bytes memory _vote1, bytes memory _vote2) public {
+    function slash(bytes calldata _vote1, bytes calldata _vote2) external {
         Casper.VoteMsg memory _voteMsg1 = _vote1.toVote();
         Casper.VoteMsg memory _voteMsg2 = _vote2.toVote();
         require(_voteMsg1.signer == _voteMsg2.signer);
@@ -394,30 +352,55 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         }
     }
 
-    function isValidator(address _validatorAddress) public view returns (bool) {
+    function isValidator(address _validatorAddress) external view returns (bool) {
+        return _isValidator(_validatorAddress);
+    }
+
+    function isWithdrawable(address _validatorAddress) external view returns (bool) {
+        return _isWithdrawable(_validatorAddress);
+    }
+
+    function difficultyOf(bytes32 _parent, address _proposer) external view returns (uint256) {
+        return _difficultyOf(_parent, _proposer);
+    }
+
+    function rewardFor(bytes32 _parent, address _proposer) external view returns (uint256) {
+        return _rewardFor(_parent, _proposer);
+    }
+
+    function priorityOf(bytes32 _parent, address _proposer) external view returns (uint8) {
+        return _priorityOf(_parent, _proposer);
+    }
+
+    function proofOfWork(address _proposer, bytes32 _parent, bytes32 _state, uint256 _epochNum, uint256 _nonce) external view returns (bool) {
+        return _proofOfWork(_proposer, _parent, _state, _epochNum,_nonce);
+    }
+
+
+    function _isValidator(address _validatorAddress) internal view returns (bool) {
         Casper.Validator storage _validator = validators[_validatorAddress];
         if(_validator.addr == address(0)) return false;
         return _isForeValidator(_validator) || _isRearValidator(_validator);
     }
 
 
-    function isWithdrawable(address _validatorAddress) public view returns (bool) {
+    function _isWithdrawable(address _validatorAddress) internal view returns (bool) {
         Casper.Validator storage validator = validators[_validatorAddress];
         return validator.endDynasty <= dynastyNum && validator.withdrawable != 0 && validator.withdrawable < now && !slashed[_validatorAddress];
     }
 
-    function getDifficulty(bytes32 _parent, address _proposer) public view returns (uint256) {
-        uint8 _priority = getPriority(_parent, _proposer);
+    function _difficultyOf(bytes32 _parent, address _proposer) internal view returns (uint256) {
+        uint8 _priority = _priorityOf(_parent, _proposer);
         return uint256(bytes32(uint256(0) - 1) >> 4 * _priority);
     }
 
 
-    function getReward(bytes32 _parent, address _proposer) public view returns (uint256){
-        uint256 reward = MAXIMUM_REWARD >> getPriority(_parent, _proposer);
+    function _rewardFor(bytes32 _parent, address _proposer) internal view returns (uint256){
+        uint256 reward = MAXIMUM_REWARD >> _priorityOf(_parent, _proposer);
         return reward;
     }
 
-    function getPriority(bytes32 _parent, address _proposer) public view returns (uint8) {
+    function _priorityOf(bytes32 _parent, address _proposer) internal view returns (uint8) {
         Casper.Checkpoint memory parentCheckpoint = checkpoints[_parent];
         // It should have own randomness value
         require(parentCheckpoint.randomness != bytes32(0));
@@ -439,13 +422,13 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         return _priority;
     }
 
-    function proofOfWork(
+    function _proofOfWork(
         address _proposer,
         bytes32 _parent,
         bytes32 _state,
         uint256 _epochNum,
         uint256 _nonce
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         bytes32 _root = keccak256(
             abi.encodePacked(
             _proposer,
@@ -455,7 +438,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
             _nonce)
         );
         bytes32 _randomness = checkpoints[_parent].randomness;
-        return uint256(keccak256(abi.encodePacked(_root, _randomness))) < getDifficulty(_parent, _proposer);
+        return uint256(keccak256(abi.encodePacked(_root, _randomness))) < _difficultyOf(_parent, _proposer);
     }
 
     function _applyVote(Casper.VoteMsg memory _vote) internal {
@@ -468,7 +451,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
 
         Casper.Validator storage _validator = validators[_vote.signer];
         // The signer should be a validator
-        require(isValidator(_validator.addr));
+        require(_isValidator(_validator.addr));
 
         // Not able to vote for same height checkpoint
         require(!votes[_vote.targetEpoch].has(_validator.id), "Already voted");
@@ -478,7 +461,7 @@ contract ERC1XXX is ERC20, ERC20Detailed {
         _target.votes = _target.votes.append(_validator.id);
 
         // Record reward
-        uint256 reward = getReward(_target.parent, _target.proposer);
+        uint256 reward = _rewardFor(_target.parent, _target.proposer);
         _validator.reward += reward;
         // TODO mint token
 
@@ -541,10 +524,11 @@ contract ERC1XXX is ERC20, ERC20Detailed {
             _parent.finalized = true;
             finalizedCheckpoint = _checkpoint.parent;
             emit Epoch(_parent.epochNum, _checkpoint.parent, _parent.justified, _parent.accused, _parent.finalized);
-        }
 
-        // increase dynasty
-        _increaseDynasty();
+            // increase dynasty
+            _increaseDynasty();
+            emit Dynasty(dynastyNum, _checkpoint.parent);
+        }
     }
 
     function _isForeValidator(Casper.Validator memory _validator) internal view returns (bool) {
