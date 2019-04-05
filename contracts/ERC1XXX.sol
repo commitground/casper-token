@@ -258,17 +258,6 @@ contract ERC1XXX is IERC1XXX, ERC20, ERC20Detailed {
         _applyVote(_voteMsg);
     }
 
-    function directVote(bytes32 _source, bytes32 _target, uint256 _sourceEpoch, uint256 _targetEpoch) external {
-        Casper.VoteMsg memory _voteMsg = Casper.VoteMsg(
-            _source, 
-            _target, 
-            _sourceEpoch,
-            _targetEpoch, 
-            msg.sender
-        );
-        _applyVote(_voteMsg);
-    }
-
     function batchVote(bytes calldata _msgArr) external {
         Casper.VoteMsg[]  memory _voteMessages = _msgArr.toBatchVotes();
         for(uint i = 0; i < _voteMessages.length; i ++) {
