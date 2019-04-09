@@ -1,9 +1,10 @@
 {
-  "version": "1.0.0",
+  "name": "casper-pepow-token",
+  "version": "0.0.0",
   "main": "src/index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wanseob/npm-truffle-box.git"
+    "url": "git+https://github.com/wanseob/casper-pepow-token.git"
   },
   "scripts": {
     "postinstall": "chmod +x scripts/*",
