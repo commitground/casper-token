@@ -2,9 +2,9 @@ pragma solidity >=0.4.21 < 0.6.0;
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
 import "./Casper.sol";
-import "./IERC1XXX.sol";
+import "./IERC1913.sol";
 
-contract ERC1XXX is IERC1XXX, ERC20, ERC20Detailed {
+contract ERC1913 is IERC1913, ERC20, ERC20Detailed {
     using Casper for Casper.Checkpoint;
     using Casper for Casper.Validator;
     using Casper for Casper.VoteMsg;

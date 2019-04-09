@@ -1,6 +1,6 @@
 pragma solidity >=0.4.21 < 0.6.0;
 
-interface IERC1XXX /* is IERC20 */{
+interface IERC1913 /* is IERC20 */{
 
     /**
      * @dev Push the message sender to the waiting list for the *d+2* dynasty

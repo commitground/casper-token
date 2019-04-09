@@ -1,11 +1,11 @@
 const CasperLib = artifacts.require('./Casper')
-const ERC1XXX = artifacts.require('./ERC1XXX')
+const ERC1913 = artifacts.require('./ERC1913')
 
 module.exports = function (deployer) {
   deployer.deploy(CasperLib)
-  deployer.link(CasperLib, ERC1XXX)
+  deployer.link(CasperLib, ERC1913)
   deployer.deploy(
-    ERC1XXX,
+    ERC1913,
     'CasperPEPoWToken',
     'CPT',
     18,

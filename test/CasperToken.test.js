@@ -1,18 +1,18 @@
 const chai = require('chai')
 const BigNumber = web3.BigNumber
 chai.use(require('chai-bignumber')(BigNumber)).should()
-const ERC1XXX = artifacts.require('ERC1XXX')
+const ERC1913 = artifacts.require('ERC1913')
 const Casper = artifacts.require('Casper')
 
-contract('ERC1XXX', ([deployer, ...members]) => {
+contract('ERC1913', ([deployer, ...members]) => {
   let casperToken
   before('Deploy library', async () => {
     let casper = await Casper.new()
-    await ERC1XXX.link(Casper, casper.address)
+    await ERC1913.link(Casper, casper.address)
   })
   context('Test', async () => {
     beforeEach('Deploy new contract', async () => {
-      casperToken = await ERC1XXX.new(
+      casperToken = await ERC1913.new(
         'CasperToken',
         'CPT',
         18,
